@@ -10,6 +10,14 @@ cc_library_shared {
         "-Werror",
     ],
 
+    // c2d2.h ships in hardware/qcom-caf/sm8150/display/libcopybit but the
+    // sm8150 display modules are disabled in this build (sm8350 provides
+    // the active display HAL, and sm8350 dropped libcopybit). The headers
+    // remain on disk so we point at them directly.
+    include_dirs: [
+        "hardware/qcom-caf/sm8150/display/libcopybit",
+    ],
+
     header_libs: [
         "display_headers",
         "qti_kernel_headers",
