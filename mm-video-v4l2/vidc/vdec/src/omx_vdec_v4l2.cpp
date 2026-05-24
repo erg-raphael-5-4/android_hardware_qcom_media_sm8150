@@ -10901,8 +10901,8 @@ bool omx_vdec::handle_color_space_info(void *data)
                         display_info_payload->color_description_present_flag) {
                     convert_color_space_info(display_info_payload->color_primaries,
                             display_info_payload->video_full_range_flag,
-                            display_info_payload->transfer_characteristics,
-                            display_info_payload->matrix_coefficients,
+                            display_info_payload->transfer_char,
+                            display_info_payload->matrix_coeffs,
                             aspects);
                 }
             }
