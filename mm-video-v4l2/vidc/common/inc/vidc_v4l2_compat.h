@@ -17,6 +17,11 @@
 #ifndef __VIDC_V4L2_COMPAT_H__
 #define __VIDC_V4L2_COMPAT_H__
 
+// Pull in the kernel-provided VIDC enums first, so the #ifndef guards below
+// suppress redefinitions of anything the kernel already declares. Resolves
+// via the -Iout/.../generated_kernel_includes/gen/usr/include/vidc/ path.
+#include <media/msm_vidc_utils.h>
+
 // ---------------------------------------------------------------------------
 // HEVC profile
 // ---------------------------------------------------------------------------
