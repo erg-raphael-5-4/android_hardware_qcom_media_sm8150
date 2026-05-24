@@ -28,6 +28,8 @@ cc_library_shared {
     include_dirs: [
         "system/memory/libion/include",
         "system/memory/libion/kernel-headers",
+        // media/msm_media_info.h + msm_vidc_utils.h - kernel source UAPI.
+        "kernel/xiaomi/sm8150/techpack/video/include/uapi/vidc",
     ],
 
     header_libs: [

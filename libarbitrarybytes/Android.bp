@@ -13,6 +13,12 @@ cc_library_shared {
         "-D_ANDROID_",
     ],
 
+    // media/msm_media_info.h + msm_vidc_utils.h - kernel source UAPI.
+    // Same rationale as libc2dcolorconvert/Android.bp.
+    include_dirs: [
+        "kernel/xiaomi/sm8150/techpack/video/include/uapi/vidc",
+    ],
+
     header_libs: [
         "libarbitrarybytes_headers",
         "libomxcommon_headers",

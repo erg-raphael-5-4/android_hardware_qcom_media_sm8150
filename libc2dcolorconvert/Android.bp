@@ -16,6 +16,12 @@ cc_library_shared {
     // remain on disk so we point at them directly.
     include_dirs: [
         "hardware/qcom-caf/sm8150/display/libcopybit",
+        // media/msm_media_info.h + msm_vidc_utils.h - kernel source UAPI.
+        // Done here (and in sibling Android.bp files) instead of via
+        // vendor/lineage/build/soong/Android.bp's generated_kernel_includes
+        // export_include_dirs so the change survives a `repo sync` of the
+        // upstream vendor/lineage tree.
+        "kernel/xiaomi/sm8150/techpack/video/include/uapi/vidc",
     ],
 
     header_libs: [
