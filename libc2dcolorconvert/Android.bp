@@ -31,12 +31,10 @@ cc_library_shared {
 
 cc_library_headers {
     name: "libc2dcolorconvert_headers",
-    // c2d2.h is included by C2DColorConverter.h, so any consumer of this
-    // header lib (libOmxVenc, libOmxVdec, ...) needs the libcopybit path
-    // too. Export it here so we don't have to repeat in every consumer.
-    export_include_dirs: [
-        ".",
-        "../../display/libcopybit",
-    ],
+    // C2DColorConverter.h pulls in c2d2.h, which lives in the disabled
+    // sm8150 display/libcopybit tree. We symlink c2d2.h into this dir so
+    // a plain `.` export covers it for all consumers. Soong forbids ../
+    // paths in export_include_dirs; the symlink is the easy way around.
+    export_include_dirs: ["."],
     vendor: true,
 }
