@@ -90,4 +90,10 @@
 #define V4L2_MPEG_VIDC_VIDEO_TME_LEVEL_INTEGER 0
 #endif
 
+// V4L2 pixel format fourcc for TME (QC-specific). msm-5.4 stock value.
+#ifndef V4L2_PIX_FMT_TME
+#include <linux/videodev2.h>
+#define V4L2_PIX_FMT_TME v4l2_fourcc('T', 'M', 'E', '0')
+#endif
+
 #endif  // __VIDC_V4L2_COMPAT_H__

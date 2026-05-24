@@ -31,6 +31,12 @@ cc_library_shared {
 
 cc_library_headers {
     name: "libc2dcolorconvert_headers",
-    export_include_dirs: ["."],
+    // c2d2.h is included by C2DColorConverter.h, so any consumer of this
+    // header lib (libOmxVenc, libOmxVdec, ...) needs the libcopybit path
+    // too. Export it here so we don't have to repeat in every consumer.
+    export_include_dirs: [
+        ".",
+        "../../display/libcopybit",
+    ],
     vendor: true,
 }
