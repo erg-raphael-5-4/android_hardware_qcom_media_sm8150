@@ -33,6 +33,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unordered_map>
 
 #include "OMX_QCOMExtns.h"
+#include "vidc_v4l2_compat.h"
 #ifdef _ANDROID_
 #include <gralloc_priv.h>
 #endif
