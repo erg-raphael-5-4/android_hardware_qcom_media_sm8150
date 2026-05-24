@@ -96,4 +96,100 @@
 #define V4L2_PIX_FMT_TME v4l2_fourcc('T', 'M', 'E', '0')
 #endif
 
+// ---------------------------------------------------------------------------
+// V4L2 control IDs (QC-specific) - msm-5.4 numeric values
+// ---------------------------------------------------------------------------
+#include <linux/v4l2-controls.h>
+#ifndef V4L2_CID_MPEG_MSM_VIDC_BASE
+#define V4L2_CID_MPEG_MSM_VIDC_BASE (V4L2_CID_MPEG_BASE + 2000)
+#endif
+
+// Defined relative to V4L2_CID_MPEG_MSM_VIDC_BASE so values are unique.
+// The kernel driver in this build doesn't recognise these IDs anyway (they
+// were dropped from msm-5.4 UAPI); the shims exist purely so userspace
+// compiles. Runtime calls using these will return -EINVAL but won't crash.
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_HEVC_PROFILE
+#define V4L2_CID_MPEG_VIDC_VIDEO_HEVC_PROFILE       (V4L2_CID_MPEG_MSM_VIDC_BASE + 1)
+#endif
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_HEVC_TIER_LEVEL
+#define V4L2_CID_MPEG_VIDC_VIDEO_HEVC_TIER_LEVEL    (V4L2_CID_MPEG_MSM_VIDC_BASE + 2)
+#endif
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_VP9_PROFILE
+#define V4L2_CID_MPEG_VIDC_VIDEO_VP9_PROFILE        (V4L2_CID_MPEG_MSM_VIDC_BASE + 3)
+#endif
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_IDR_PERIOD
+#define V4L2_CID_MPEG_VIDC_VIDEO_IDR_PERIOD         (V4L2_CID_MPEG_MSM_VIDC_BASE + 10)
+#endif
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_NUM_B_FRAMES
+#define V4L2_CID_MPEG_VIDC_VIDEO_NUM_B_FRAMES       (V4L2_CID_MPEG_MSM_VIDC_BASE + 11)
+#endif
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES
+#define V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES       (V4L2_CID_MPEG_MSM_VIDC_BASE + 12)
+#endif
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_OUTPUT_ORDER
+#define V4L2_CID_MPEG_VIDC_VIDEO_OUTPUT_ORDER       (V4L2_CID_MPEG_MSM_VIDC_BASE + 20)
+#endif
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_ROTATION_CAPS
+#define V4L2_CID_MPEG_VIDC_VIDEO_ROTATION_CAPS      (V4L2_CID_MPEG_MSM_VIDC_BASE + 30)
+#endif
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_BLUR_WIDTH
+#define V4L2_CID_MPEG_VIDC_VIDEO_BLUR_WIDTH         (V4L2_CID_MPEG_MSM_VIDC_BASE + 31)
+#endif
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_COLOR_SPACE_CAPS
+#define V4L2_CID_MPEG_VIDC_VIDEO_COLOR_SPACE_CAPS   (V4L2_CID_MPEG_MSM_VIDC_BASE + 32)
+#endif
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_TME_PAYLOAD_VERSION
+#define V4L2_CID_MPEG_VIDC_VIDEO_TME_PAYLOAD_VERSION (V4L2_CID_MPEG_MSM_VIDC_BASE + 40)
+#endif
+#ifndef V4L2_CID_MPEG_VIDC_VIDEO_ROI_TYPE_NONE
+#define V4L2_CID_MPEG_VIDC_VIDEO_ROI_TYPE_NONE      0
+#endif
+
+// Output-order CID values (enum values, not CIDs)
+#ifndef V4L2_MPEG_VIDC_VIDEO_OUTPUT_ORDER_DISPLAY
+#define V4L2_MPEG_VIDC_VIDEO_OUTPUT_ORDER_DISPLAY   0
+#endif
+#ifndef V4L2_MPEG_VIDC_VIDEO_OUTPUT_ORDER_DECODE
+#define V4L2_MPEG_VIDC_VIDEO_OUTPUT_ORDER_DECODE    1
+#endif
+
+// ---------------------------------------------------------------------------
+// V4L2 extradata types (QC-specific)
+// ---------------------------------------------------------------------------
+#ifndef V4L2_MPEG_VIDC_EXTRADATA_ROI_QP
+#define V4L2_MPEG_VIDC_EXTRADATA_ROI_QP             0x0007
+#endif
+#ifndef V4L2_MPEG_VIDC_EXTRADATA_HDR10PLUS_METADATA
+#define V4L2_MPEG_VIDC_EXTRADATA_HDR10PLUS_METADATA 0x0020
+#endif
+
+// ---------------------------------------------------------------------------
+// V4L2 QCOM buffer flags - bit positions in v4l2_buffer.flags
+// ---------------------------------------------------------------------------
+#ifndef V4L2_QCOM_BUF_FLAG_CODECCONFIG
+#define V4L2_QCOM_BUF_FLAG_CODECCONFIG  0x00020000
+#endif
+#ifndef V4L2_QCOM_BUF_FLAG_EOS
+#define V4L2_QCOM_BUF_FLAG_EOS          0x00040000
+#endif
+#ifndef V4L2_QCOM_BUF_FLAG_PERF_MODE
+#define V4L2_QCOM_BUF_FLAG_PERF_MODE    0x00400000
+#endif
+
+// ---------------------------------------------------------------------------
+// V4L2 QCOM decoder/encoder command codes (extensions of v4l2_decoder_cmd)
+// ---------------------------------------------------------------------------
+#ifndef V4L2_QCOM_CMD_FLUSH
+#define V4L2_QCOM_CMD_FLUSH             0x40
+#endif
+#ifndef V4L2_QCOM_CMD_FLUSH_OUTPUT
+#define V4L2_QCOM_CMD_FLUSH_OUTPUT      0x00000001
+#endif
+#ifndef V4L2_QCOM_CMD_FLUSH_CAPTURE
+#define V4L2_QCOM_CMD_FLUSH_CAPTURE     0x00000002
+#endif
+#ifndef V4L2_QCOM_CMD_SESSION_CONTINUE
+#define V4L2_QCOM_CMD_SESSION_CONTINUE  0x41
+#endif
+
 #endif  // __VIDC_V4L2_COMPAT_H__
