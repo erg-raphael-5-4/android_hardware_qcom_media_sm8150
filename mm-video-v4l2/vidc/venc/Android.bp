@@ -33,7 +33,7 @@ cc_library_shared {
     ],
 
     header_libs: [
-        "display_headers",
+        "display_headers_sm8150",
         "libc2dcolorconvert_headers",
         "libomxcommon_headers",
         "libomxcore_headers",

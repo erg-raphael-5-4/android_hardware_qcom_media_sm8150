@@ -27,7 +27,7 @@ cc_library_shared {
     ],
 
     header_libs: [
-        "display_headers",
+        "display_headers_sm8150",
         "libarbitrarybytes_headers",
         "libc2dcolorconvert_headers",
         "libnativebase_headers",

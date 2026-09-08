@@ -21,7 +21,7 @@ cc_library_static {
     ],
 
     header_libs: [
-        "display_headers",
+        "display_headers_sm8150",
         "libomxcommon_headers",
         "libomxcore_headers",
         "libutils_headers",
