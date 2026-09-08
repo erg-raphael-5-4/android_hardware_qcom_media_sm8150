@@ -5919,9 +5919,16 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate)
 bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate)
 {
     struct v4l2_streamparm parm;
+    struct v4l2_control control;
     int rc = 0;
     struct venc_framerate frame_rate_cfg;
     Q16ToFraction(encode_framerate,frame_rate_cfg.fps_numerator,frame_rate_cfg.fps_denominator);
+    /*
+     * Zero the whole struct. Only type and timeperframe were being set, which
+     * left extendedmode, writebuffers and reserved[] as stack garbage on an
+     * ioctl the driver may validate.
+     */
+    memset(&parm, 0, sizeof(parm));
     parm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
     parm.parm.output.timeperframe.numerator = frame_rate_cfg.fps_denominator;
     parm.parm.output.timeperframe.denominator = frame_rate_cfg.fps_numerator;
@@ -5934,6 +5941,35 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate)
 
     if (frame_rate_cfg.fps_numerator > 0)
         rc = ioctl(m_nDriver_fd, VIDIOC_S_PARM, &parm);
+
+    if (rc) {
+        /*
+         * This kernel's vidc driver implements no VIDIOC_S_PARM handler at all
+         * (techpack/video/msm/vidc has no s_parm), so the ioctl always fails
+         * and video recording dies in MediaCodec.configure():
+         *
+         *   OMX-VENC: venc_dev: ERROR: Request for setting framerate failed
+         *   OMX-VENC: ERROR: venc_set_param input failed
+         *   OMXNodeInstance: setParameter(ParamPortDefinition) ERROR:
+         *                    UnsupportedSetting(0x80001019)
+         *   VideoEncoderSession: Unable to initialize video encoder
+         *                        MediaCodec$CodecException
+         *
+         * The driver instead exposes framerate as a V4L2 control,
+         * V4L2_CID_MPEG_VIDC_VIDEO_FRAME_RATE (msm_venc.c), taking the value
+         * in Q16 -- which is exactly what encode_framerate already is. The
+         * decoder side of this HAL already uses that control. Fall back to it
+         * rather than failing, so kernels that do implement S_PARM keep
+         * working unchanged.
+         */
+        memset(&control, 0, sizeof(control));
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_FRAME_RATE;
+        control.value = (OMX_S32)encode_framerate;
+        DEBUG_PRINT_HIGH("S_PARM framerate failed, falling back to "
+                "V4L2_CID_MPEG_VIDC_VIDEO_FRAME_RATE id=%#x value=%d",
+                control.id, control.value);
+        rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    }
 
     if (rc) {
         DEBUG_PRINT_ERROR("ERROR: Request for setting framerate failed");
