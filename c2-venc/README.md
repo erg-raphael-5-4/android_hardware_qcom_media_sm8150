@@ -52,9 +52,11 @@ the HEVC one fails before its first frame. Both are still listed in
   transport globally; AIDL is selected only with `ro.vendor.api_level >= 202404`
   or the aconfig flag, and raphael ships API level 30. Declaring 1.0 in the
   manifest while registering a 1.2 store is rejected by hwservicemanager.
-- **XML order beats Codec2 rank.** `createEncoderByType()` takes the first
-  `media_codecs_c2.xml` match. `persist.vendor.c2venc.prefer` only changes our
-  rank within Codec2 and is a debugging aid, not the selection mechanism.
+- **Rank is the selection mechanism.** `MediaCodecList` stable-sorts by rank
+  and `createEncoderByType()` takes the first match; XML order only breaks
+  ties, and on a tie the QTI store (enumerated first) wins. QTI advertises
+  256, so ours default to 128. `persist.vendor.c2venc.prefer=0` demotes us
+  to 512 for A/B testing; the store reads it once, so restart the service.
 - **`.rc` runs as `user mediacodec`** because the binary is labelled
   `mediacodec_exec`; `task_profiles ProcessCapacityHigh` replaces the older
   `writepid /dev/cpuset/...`.
@@ -63,8 +65,8 @@ the HEVC one fails before its first frame. Both are still listed in
 
 - `stop`/`start` the service by its `.rc` name, `vendor-sm8150-c2-venc-hal`,
   or just kill the pid; init restarts it.
-- mediaserver caches `MediaCodecList`: after changing the XML, kill
-  mediaserver too.
+- mediaserver caches `MediaCodecList`, and the store caches its rank: after
+  changing the XML or the property, kill both mediaserver and the service.
 - `adb remount` overlays (`/mnt/scratch/overlay`) shadow a flashed `/vendor`.
 
 ## Not yet exercised

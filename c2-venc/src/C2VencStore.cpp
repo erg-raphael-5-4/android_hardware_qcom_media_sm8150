@@ -62,25 +62,20 @@ bool isOurs(const C2String &name) {
     return name == kAvcEncoderName || name == kHevcEncoderName;
 }
 
-// Lower rank wins in MediaCodecList. C2PlatformComponentStore gives every
-// software video component rank 512 (C2Store.cpp:1110), so anything below that
-// is preferred over c2.android.avc.encoder. 256 leaves room both above (for a
-// future fallback) and below (should a QTI component ever need to outrank us).
-// Lower rank wins in Codec2. 256 put us behind c2.qti.avc.encoder, so the
-// QTI blob was still chosen for every video/avc encode and this component
-// never ran. 0 makes us the preferred AVC encoder; the QTI entry stays in
-// media_codecs_c2.xml so it is still reachable by name.
-// Lower rank wins in Codec2. While this component is still in bring-up it must
-// NOT be the default AVC encoder: at rank 0 it is preferred for everything,
-// including the camera, so any defect here breaks video recording device-wide.
+// MediaCodecList stable-sorts codecs by rank (MediaCodecList.cpp:273) and
+// createEncoderByType() takes the first match, so rank is the selection
+// mechanism; media_codecs_c2.xml order only matters between equal ranks.
+// The QTI components advertise 256. Ours must be strictly lower to be the
+// default, because on a tie the sort keeps store enumeration order and the
+// QTI "default" store is enumerated before our "default1".
 //
-// Default 256 leaves c2.qti.avc.encoder in charge (the known-good path).
-// Set persist.vendor.c2venc.prefer=1 and reboot to put this component in front
-// for testing. Flip the default once it is proven.
+// persist.vendor.c2venc.prefer=0 demotes us behind the QTI encoders for
+// A/B testing. The value is read once, when the store first lists its
+// components, so changing it needs a service restart (or reboot).
 static uint32_t componentRank() {
     char value[PROPERTY_VALUE_MAX] = {0};
-    property_get("persist.vendor.c2venc.prefer", value, "0");
-    return (value[0] == '1') ? 0u : 256u;
+    property_get("persist.vendor.c2venc.prefer", value, "1");
+    return (value[0] == '0') ? 512u : 128u;
 }
 
 }  // namespace
