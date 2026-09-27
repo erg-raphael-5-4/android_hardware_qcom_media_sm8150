@@ -1,0 +1,16 @@
+# Codec2 HAL service for the sm8150 V4L2 video encoder.
+#
+# user/group match vendor.qti.media.c2@1.0-service, not the media user: the
+# binary is labelled mediacodec_exec in sepolicy, so it runs in the mediacodec
+# domain, and that domain's policy is written around the mediacodec UID.
+# drmrpc is needed for the buffer pool; camera for camcorder input surfaces.
+#
+# task_profiles replaces the older "writepid /dev/cpuset/foreground/tasks":
+# on this Android version init routes cgroup placement through task profiles
+# and ProcessCapacityHigh is what every in-tree Codec2 service uses.
+service vendor-sm8150-c2-venc-hal /vendor/bin/hw/sm8150-c2-venc-service
+    class hal
+    user mediacodec
+    group mediadrm camera drmrpc system
+    ioprio rt 4
+    task_profiles ProcessCapacityHigh

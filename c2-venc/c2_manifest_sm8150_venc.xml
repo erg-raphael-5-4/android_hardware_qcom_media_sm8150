@@ -1,0 +1,35 @@
+<!--
+  VINTF fragment for the sm8150 Codec2 encoder service.
+
+  HIDL, not AIDL: Codec2Client selects one transport for the whole framework
+  and this device resolves to HIDL (see the comment at the top of
+  src/service.cpp).
+
+  Version 1.2, matching the interface the service actually registers
+  (V1_2::utils::ComponentStore) and AOSP's own
+  frameworks/av/media/codec2/hal/services/manifest_media_c2_default.xml.
+
+  Do not "fix" this to 1.0 to match the V1_0 descriptor that
+  Codec2Client::CacheServiceNames() queries: hwservicemanager widens minor
+  versions for manifest lookup, so 1.2 is found, whereas declaring 1.0 while
+  registering a V1_2 store gets the registration rejected outright and the
+  service vanishes from lshal entirely.
+
+  The instance name is constrained on both sides. The prebuilt
+  vendor.qti.media.c2@1.0-service already owns "default" and "software", and
+  the framework compatibility matrix only permits "software",
+  "default[0-9]*" and "vendor[0-9]*_software" for this HAL
+  (compatibility_matrix.8.xml:345-352) , an arbitrary name is rejected by
+  checkvintf at build time. "default1" satisfies both.
+-->
+<manifest version="1.0" type="device">
+    <hal format="hidl">
+        <name>android.hardware.media.c2</name>
+        <transport>hwbinder</transport>
+        <version>1.2</version>
+        <interface>
+            <name>IComponentStore</name>
+            <instance>default1</instance>
+        </interface>
+    </hal>
+</manifest>

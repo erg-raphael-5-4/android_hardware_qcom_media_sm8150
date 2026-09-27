@@ -1,0 +1,220 @@
+// Codec2 video encoder (AVC, HEVC) for sm8150, built on the QTI V4L2 engine.
+//
+// The QTI prebuilt Codec2 encoders on this device fail off the camera path:
+// the AVC one cannot take composited RGBA surfaces (screen recording, any app
+// encoding a Surface) and the HEVC one fails before its first frame. Rather
+// than rewrite 8000 lines of msm_vidc V4L2 handling, this compiles the venc_dev
+// engine with VENC_HOST_C2 so it talks to a Codec2 host instead of an OMX one.
+//
+// The engine under engine/ is the sm8250 media tree's copy, not this tree's:
+// its V4L2 control vocabulary is the one that matches this device's kernel.
+// engine/README.md explains why it is vendored rather than referenced.
+
+cc_library_static {
+    name: "libc2venc_engine",
+    vendor: true,
+
+    srcs: [
+        "engine/src/video_encoder_device_v4l2.cpp",
+        // The sm8250 engine splits its V4L2 parameter handling into a second
+        // file, and vidc_common.cpp provides do_sync_ioctl().
+        "engine/src/video_encoder_device_v4l2_params.cpp",
+        "engine/src/vidc_common.cpp",
+    ],
+
+    cflags: [
+        "-Werror",
+        "-Wno-unused-parameter",
+        "-D_ANDROID_",
+        "-D_ANDROID_ICS_",
+        "-D_UBWC_",
+        "-DUSE_CAMERA_METABUFFER_UTILS",
+        "-DUSE_ION",
+        "-DUSE_NATIVE_HANDLE_SOURCE",
+        // Selects C2VencHost over omx_venc as venc_dev's host class.
+        "-DVENC_HOST_C2",
+    ],
+
+    include_dirs: [
+        "system/memory/libion/include",
+        "system/memory/libion/kernel-headers",
+        "kernel/xiaomi/sm8150/techpack/video/include/uapi/vidc",
+        // The engine comes from the sm8250 media tree, whose V4L2 control
+        // vocabulary matches this kernel (changes.md section 45). Its header
+        // libs are named identically to the sm8150 ones, so they are pulled in
+        // by path rather than by module name to avoid resolving to the wrong
+        // tree inside this namespace.
+        "hardware/qcom-caf/sm8150/media/c2-venc/engine/inc",
+        // Plain -I paths into the sm8250 media tree. Unlike module references
+        // these need no Soong namespace, which matters because adding
+        // hardware/qcom-caf/sm8250 to PRODUCT_SOONG_NAMESPACES collides with
+        // the sm8150 audio HAL (see engine/README.md).
+        "hardware/qcom-caf/sm8250/media/mm-video-v4l2/vidc/common/inc",
+        "hardware/qcom-caf/sm8250/media/mm-core/inc",
+        "hardware/qcom-caf/sm8250/media/libc2dcolorconvert",
+    ],
+
+    header_libs: [
+        "display_headers",
+        "libc2dcolorconvert_headers",
+        "libomxcore_headers",
+        "libplatformconfig_headers",
+        "libstagefrighthw_headers",
+        "media_plugin_headers",
+        "qti_kernel_headers",
+        "libc2venc_headers",
+    ],
+
+    shared_libs: [
+        "libc2dcolorconvert",
+        "libcutils",
+        "libion",
+        "liblog",
+        "libplatformconfig",
+        "libqdMetaData",
+    ],
+
+    static_libs: [
+        "libOmxVidcCommon",
+    ],
+}
+
+cc_library_headers {
+    name: "libc2venc_headers",
+    export_include_dirs: ["inc"],
+    vendor: true,
+}
+
+// The Codec2 component itself. Kept separate from the engine library so a
+// build failure in the C2 translation layer cannot be confused with one in the
+// reused V4L2 code.
+cc_library_shared {
+    name: "libc2venc",
+    vendor: true,
+
+    srcs: [
+        "src/C2VencHost.cpp",
+        "src/C2VencComponent.cpp",
+    ],
+
+    cflags: [
+        "-Werror",
+        "-Wno-unused-parameter",
+        "-D_ANDROID_",
+        "-D_ANDROID_ICS_",
+        "-D_UBWC_",
+        "-DUSE_ION",
+        "-DVENC_HOST_C2",
+    ],
+
+    include_dirs: [
+        "system/memory/libion/include",
+        "system/memory/libion/kernel-headers",
+        "kernel/xiaomi/sm8150/techpack/video/include/uapi/vidc",
+        // The engine comes from the sm8250 media tree, whose V4L2 control
+        // vocabulary matches this kernel (changes.md section 45). Its header
+        // libs are named identically to the sm8150 ones, so they are pulled in
+        // by path rather than by module name to avoid resolving to the wrong
+        // tree inside this namespace.
+        "hardware/qcom-caf/sm8150/media/c2-venc/engine/inc",
+        // Plain -I paths into the sm8250 media tree. Unlike module references
+        // these need no Soong namespace, which matters because adding
+        // hardware/qcom-caf/sm8250 to PRODUCT_SOONG_NAMESPACES collides with
+        // the sm8150 audio HAL (see engine/README.md).
+        "hardware/qcom-caf/sm8250/media/mm-video-v4l2/vidc/common/inc",
+        "hardware/qcom-caf/sm8250/media/mm-core/inc",
+        "hardware/qcom-caf/sm8250/media/libc2dcolorconvert",
+    ],
+
+    header_libs: [
+        "display_headers",
+        "libc2dcolorconvert_headers",
+        "libcodec2_headers",
+        "libcodec2_soft_common_headers",
+        "libcodec2_vndk_headers",
+        "libomxcore_headers",
+        "libplatformconfig_headers",
+        "libstagefrighthw_headers",
+        "media_plugin_headers",
+        "qti_kernel_headers",
+        "libc2venc_headers",
+    ],
+
+    shared_libs: [
+        "libcodec2",
+        "libcodec2_soft_common",
+        "libcodec2_vndk",
+        "libcutils",
+        "libsfplugin_ccodec_utils",
+        // Providers for the shared V4L2 engine: Platform::Config, getMetaData/
+        // setMetaData and is_ubwc_interlaced. libOmxVenc links the same set.
+        "libplatformconfig",
+        "libqdMetaData",
+        "libc2dcolorconvert",
+        "libion",
+        "liblog",
+        "libutils",
+    ],
+
+    static_libs: [
+        "libc2venc_engine",
+        "libOmxVidcCommon",
+        // RGBA -> NV12 on the CPU, as AOSP's software encoders do it.
+        "libyuv",
+    ],
+}
+
+// Codec2 HAL service exposing c2.sm8150.avc.encoder as its own IComponentStore
+// instance. Separate from libc2venc so the component library stays usable from
+// a test harness without dragging in binder.
+//
+// HIDL, not AIDL: Codec2Client::CacheServiceNames() enumerates one transport
+// globally, and IsCodec2AidlHalSelected() needs ro.vendor.api_level >= 202404
+// plus media.c2.hal.selection=aidl. raphael ships API level 30 and sets
+// neither, so an AIDL service would never be seen.
+cc_binary {
+    name: "sm8150-c2-venc-service",
+    vendor: true,
+    relative_install_path: "hw",
+
+    defaults: [
+        "libcodec2-hidl-defaults",
+    ],
+
+    srcs: [
+        "src/C2VencStore.cpp",
+        "src/service.cpp",
+    ],
+
+    cflags: [
+        "-Wall",
+        "-Werror",
+    ],
+
+    shared_libs: [
+        "libavservices_minijail",
+        "libbinder",
+        "libc2venc",
+        // property_get(), for the bring-up rank gate in C2VencStore.
+        "libcutils",
+        "libstagefright_foundation",
+    ],
+
+    required: [
+        "android.hardware.media.c2-default-seccomp_policy",
+        "android.hardware.media.c2-extended-seccomp_policy",
+    ],
+
+    init_rc: ["sm8150-c2-venc.rc"],
+    vintf_fragments: ["c2_manifest_sm8150_venc.xml"],
+}
+
+// service.cpp loads this on top of the default policy if it exists. Without it
+// the engine's eventfd2 call trips seccomp and init kills the service with
+// SIGSYS on the first encode.
+prebuilt_etc {
+    name: "android.hardware.media.c2-extended-seccomp_policy",
+    vendor: true,
+    sub_dir: "seccomp_policy",
+    src: "seccomp_policy/android.hardware.media.c2-extended-seccomp_policy",
+}
