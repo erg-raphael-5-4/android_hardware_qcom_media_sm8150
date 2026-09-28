@@ -72,11 +72,15 @@ public:
         noTimeStretch();
         setDerivedInstance(this);
 
-        // The engine consumes graphic buffers by fd; the CPU never touches
-        // them, so do not advertise CPU_READ or every frame gets a mapping.
+        // The engine consumes graphic buffers by fd. CPU_READ is advertised on
+        // purpose: QTI gralloc never allocates UBWC for CPU-readable buffers,
+        // and the engine is configured for linear NV12, so a camera that would
+        // otherwise pick UBWC for its video stream can't hand us compressed
+        // frames. It also lets checkYuvLayout() map the first frame.
         addParameter(DefineParam(mUsage, C2_PARAMKEY_INPUT_STREAM_USAGE)
                              .withConstValue(new C2StreamUsageTuning::input(
-                                     0u, (uint64_t)C2AndroidMemoryUsage::HW_CODEC_READ))
+                                     0u, (uint64_t)C2AndroidMemoryUsage::HW_CODEC_READ |
+                                                 C2MemoryUsage::CPU_READ))
                              .build());
 
         addParameter(DefineParam(mSize, C2_PARAMKEY_PICTURE_SIZE)
@@ -227,6 +231,7 @@ C2VencComponent::C2VencComponent(const char *name, c2_node_id_t id,
       mAsyncThreadRunning(false),
       mSawInputEos(false),
       mLoggedInputFormat(false),
+      mYuvChecked(false), mYuvCopy(false), mYuvNv21(false),
       mConversionNeeded(false),
       mConvSrcFormat(0),
       mStageSize(0),
@@ -315,6 +320,18 @@ bool C2VencComponent::ensureStaging(uint32_t gw, uint32_t gh, uint32_t gfmt,
     if (mConversionNeeded && mConvSrcFormat == gfmt && !mStageIon.empty()) {
         return true;
     }
+    if (!allocStaging()) {
+        return false;
+    }
+    mConvSrcFormat = gfmt;
+    ALOGI("libyuv staging enabled: RGBA %ux%u stride %u -> NV12 %ux%u "
+          "(ystride %u, yscan %u, uvstride %u), %zu x %u bytes",
+          gw, gh, gstride, mIntf->getWidth(), mIntf->getHeight(), mStageYStride,
+          mStageYScanlines, mStageUvStride, mStageIon.size(), mStageSize);
+    return true;
+}
+
+bool C2VencComponent::allocStaging() {
     releaseStaging();
 
     const uint32_t w = mIntf->getWidth();
@@ -351,12 +368,57 @@ bool C2VencComponent::ensureStaging(uint32_t gw, uint32_t gh, uint32_t gfmt,
             return false;
         }
     }
-    mConvSrcFormat = gfmt;
     mConversionNeeded = true;
-    ALOGI("libyuv staging enabled: RGBA %ux%u stride %u -> NV12 %ux%u "
-          "(ystride %u, yscan %u, uvstride %u), %u x %u bytes",
-          gw, gh, gstride, w, h, mStageYStride, mStageYScanlines, mStageUvStride,
-          slots, mStageSize);
+    return true;
+}
+
+bool C2VencComponent::checkYuvLayout(const C2ConstGraphicBlock &block) {
+    mYuvChecked = true;
+    mYuvCopy = false;
+    const C2GraphicView view = block.map().get();
+    if (view.error() != C2_OK) {
+        ALOGW("cannot map the first YUV input (%d); assuming Venus NV12", view.error());
+        return true;
+    }
+    const C2PlanarLayout &layout = view.layout();
+    if (layout.type != C2PlanarLayout::TYPE_YUV || layout.numPlanes < 3) {
+        ALOGW("first input is not planar YUV (type %d, %u planes); assuming Venus NV12",
+              (int)layout.type, layout.numPlanes);
+        return true;
+    }
+    const C2PlaneInfo &yp = layout.planes[C2PlanarLayout::PLANE_Y];
+    const C2PlaneInfo &up = layout.planes[C2PlanarLayout::PLANE_U];
+    const C2PlaneInfo &vp = layout.planes[C2PlanarLayout::PLANE_V];
+    const uint8_t *y = view.data()[C2PlanarLayout::PLANE_Y];
+    const uint8_t *u = view.data()[C2PlanarLayout::PLANE_U];
+    const uint8_t *v = view.data()[C2PlanarLayout::PLANE_V];
+    const ptrdiff_t uOff = u - y, vOff = v - y;
+    const bool semiPlanar = up.colInc == 2 && vp.colInc == 2 && up.rowInc == vp.rowInc;
+    const bool nv12 = semiPlanar && vOff == uOff + 1;
+    const bool nv21 = semiPlanar && uOff == vOff + 1;
+
+    const uint32_t w = mIntf->getWidth(), h = mIntf->getHeight();
+    const int32_t vYStride = VENUS_Y_STRIDE(COLOR_FMT_NV12, w);
+    const int32_t vYScan = VENUS_Y_SCANLINES(COLOR_FMT_NV12, h);
+    const int32_t vUvStride = VENUS_UV_STRIDE(COLOR_FMT_NV12, w);
+    const bool venus = nv12 && yp.rowInc == vYStride && up.rowInc == vUvStride &&
+                       uOff == (ptrdiff_t)vYStride * vYScan;
+
+    ALOGI("input YUV layout %ux%u: y stride %d, uv stride %d, uv offset %td, %s; "
+          "Venus wants y stride %d, uv offset %td -> %s",
+          w, h, yp.rowInc, up.rowInc, nv21 ? vOff : uOff,
+          nv12 ? "NV12" : nv21 ? "NV21" : "other", vYStride, (ptrdiff_t)vYStride * vYScan,
+          venus ? "direct" : (nv12 || nv21) ? "repack" : "unsupported, direct");
+    if (venus || !(nv12 || nv21)) {
+        return true;
+    }
+    if (!allocStaging()) {
+        return false;
+    }
+    // mConversionNeeded selects the RGBA path; this is the YUV repack path.
+    mConversionNeeded = false;
+    mYuvCopy = true;
+    mYuvNv21 = nv21;
     return true;
 }
 
@@ -551,6 +613,9 @@ c2_status_t C2VencComponent::configureEngine() {
 
 void C2VencComponent::closeEngine() {
     releaseStaging();
+    mYuvChecked = false;
+    mYuvCopy = false;
+    mYuvNv21 = false;
     if (mDev == nullptr) {
         return;
     }
@@ -731,6 +796,11 @@ void C2VencComponent::process(const std::unique_ptr<C2Work> &work,
         work->result = C2_CORRUPTED;
         return;
     }
+    if (!mConversionNeeded && !mYuvChecked && !checkYuvLayout(inBlock)) {
+        mSignalledError = true;
+        work->result = C2_CORRUPTED;
+        return;
+    }
 
     // Input slot: a ring over the input pool, bounded by what is in flight.
     uint32_t in;
@@ -780,6 +850,33 @@ void C2VencComponent::process(const std::unique_ptr<C2Work> &work,
             ALOGE("libyuv ABGRToNV12 failed: %d", rc);
             std::lock_guard<std::mutex> lock(mLock); mInFlightCount--;
             mSignalledError = true; work->result = C2_CORRUPTED; return;
+        }
+        do_cache_operations(mStageIon[stageIdx].data_fd);
+        submitFd = mStageIon[stageIdx].data_fd;
+        inHdr->nFilledLen = mStageSize;
+        inHdr->nAllocLen = mStageSize;
+    } else if (mYuvCopy && !mStageIon.empty()) {
+        const C2GraphicView view = inBlock.map().get();
+        if (view.error() != C2_OK) {
+            ALOGE("failed to map YUV input: %d", view.error());
+            std::lock_guard<std::mutex> lock(mLock); mInFlightCount--;
+            mSignalledError = true; work->result = C2_CORRUPTED; return;
+        }
+        const C2PlanarLayout &layout = view.layout();
+        const int w = (int)mIntf->getWidth(), h = (int)mIntf->getHeight();
+        uint8_t *dstY = static_cast<uint8_t *>(mStageBase[stageIdx]);
+        uint8_t *dstUV = dstY + (size_t)mStageYStride * mStageYScanlines;
+        const uint8_t *srcY = view.data()[C2PlanarLayout::PLANE_Y];
+        const int srcYStride = layout.planes[C2PlanarLayout::PLANE_Y].rowInc;
+        const int srcUvStride = layout.planes[C2PlanarLayout::PLANE_U].rowInc;
+        if (mYuvNv21) {
+            libyuv::NV21ToNV12(srcY, srcYStride, view.data()[C2PlanarLayout::PLANE_V],
+                               srcUvStride, dstY, (int)mStageYStride, dstUV,
+                               (int)mStageUvStride, w, h);
+        } else {
+            libyuv::CopyPlane(srcY, srcYStride, dstY, (int)mStageYStride, w, h);
+            libyuv::CopyPlane(view.data()[C2PlanarLayout::PLANE_U], srcUvStride, dstUV,
+                              (int)mStageUvStride, w, (h + 1) / 2);
         }
         do_cache_operations(mStageIon[stageIdx].data_fd);
         submitFd = mStageIon[stageIdx].data_fd;
