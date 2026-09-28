@@ -98,7 +98,15 @@ private:
     // C2DColorConverter hangs inside convertC2D() (sec 47). Two independent
     // implementations failing is enough to route around that subsystem.
     bool ensureStaging(uint32_t gw, uint32_t gh, uint32_t gfmt, uint32_t gstride);
+    bool allocStaging();
     void releaseStaging();
+    // YUV input whose layout differs from the Venus NV12 layout the engine is
+    // configured for (camera buffers with another stride/scanline alignment,
+    // or NV21) is repacked into the staging buffers.
+    bool checkYuvLayout(const C2ConstGraphicBlock &block);
+    bool mYuvChecked;
+    bool mYuvCopy;
+    bool mYuvNv21;
     bool mConversionNeeded;
     uint32_t mConvSrcFormat;
     std::vector<venc_ion> mStageIon;
