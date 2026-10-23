@@ -18,11 +18,13 @@
  *
  * The existing prebuilt vendor.qti.media.c2@1.0-service registers
  * android.hardware.media.c2@1.0::IComponentStore/{default,software}. This
- * service uses the instance name "default1" so the two coexist:
+ * service uses the instance name "default2" so they coexist:
  * the framework compatibility matrix only allows "software",
  * "default[0-9]*" and "vendor[0-9]*_software" for this HAL
  * (compatibility_matrix.8.xml:345-352). The QTI blob claims "default"
- * and "software", so "default1" is the first free permitted name.
+ * and "software", and the Dolby Codec2 blob
+ * (vendor.dolby_sp.media.c2@1.0-service) registers "default1", so
+ * "default2" is the first free permitted name.
  */
 
 #include <signal.h>
@@ -114,7 +116,7 @@ int main(int /*argc*/, char ** /*argv*/) {
         // Interface take effect for this process.
         android::sp<IComponentStore> store = new ComponentStore(android::CreateC2VencStore());
 
-        constexpr char const *kInstanceName = "default1";
+        constexpr char const *kInstanceName = "default2";
         if (store->registerAsService(kInstanceName) != android::OK) {
             ALOGE("cannot register IComponentStore as \"%s\"", kInstanceName);
         } else {

@@ -16,11 +16,12 @@
   service vanishes from lshal entirely.
 
   The instance name is constrained on both sides. The prebuilt
-  vendor.qti.media.c2@1.0-service already owns "default" and "software", and
+  vendor.qti.media.c2@1.0-service already owns "default" and "software", the
+  Dolby Codec2 blob owns "default1", and
   the framework compatibility matrix only permits "software",
   "default[0-9]*" and "vendor[0-9]*_software" for this HAL
   (compatibility_matrix.8.xml:345-352) , an arbitrary name is rejected by
-  checkvintf at build time. "default1" satisfies both.
+  checkvintf at build time. "default2" satisfies both.
 -->
 <manifest version="1.0" type="device">
     <hal format="hidl">
@@ -29,7 +30,7 @@
         <version>1.2</version>
         <interface>
             <name>IComponentStore</name>
-            <instance>default1</instance>
+            <instance>default2</instance>
         </interface>
     </hal>
 </manifest>

@@ -54,7 +54,7 @@ std::unique_ptr<C2ComponentFactory> CreateC2VencFactory(
 
 namespace {
 
-constexpr char kStoreName[] = "default1";
+constexpr char kStoreName[] = "default2";
 constexpr char kAvcEncoderName[] = "c2.sm8150.avc.encoder";
 constexpr char kHevcEncoderName[] = "c2.sm8150.hevc.encoder";
 
@@ -67,7 +67,7 @@ bool isOurs(const C2String &name) {
 // mechanism; media_codecs_c2.xml order only matters between equal ranks.
 // The QTI components advertise 256. Ours must be strictly lower to be the
 // default, because on a tie the sort keeps store enumeration order and the
-// QTI "default" store is enumerated before our "default1".
+// QTI "default" store is enumerated before ours.
 //
 // persist.vendor.c2venc.prefer=0 demotes us behind the QTI encoders for
 // A/B testing. The value is read once, when the store first lists its
