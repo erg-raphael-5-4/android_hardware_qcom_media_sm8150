@@ -1,7 +1,7 @@
 # c2-venc: Codec2 AVC/HEVC encoders for sm8150
 
 Two Codec2 components, `c2.sm8150.avc.encoder` and `c2.sm8150.hevc.encoder`,
-served from their own HIDL @1.2 `IComponentStore` instance (`default1`) by
+served from their own HIDL @1.2 `IComponentStore` instance (`default2`) by
 `sm8150-c2-venc-service`. They drive the msm_vidc V4L2 encoder through the QTI
 `venc_dev` engine, compiled with `-DVENC_HOST_C2` so the engine's host is a
 Codec2 component instead of an OMX one.
